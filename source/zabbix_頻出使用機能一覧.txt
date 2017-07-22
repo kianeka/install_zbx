@@ -1,0 +1,99 @@
+【アイテムキー】
+
+●死活監視編
+・icmpping[<target>,<packets>,<interval>,<size>,<timeout>]
+target - ホストのIPまたはDNS名
+packets - 更新間隔毎に送信するパケット数
+interval - 上記で指定したパケットの送信間隔（ミリ秒）
+size - パケットサイズ（バイト）
+timeout - タイムアウト（ミリ秒）
+
+icmpping[,3,5000,68,3000] は
+「連続してpingを3発 5,000ms 間隔で飛ばし、タイムアウト3,000ms以内に
+1つでも応答があれば「成功」と判断する。パケットサイズは68バイトを指定」という意味。
+pingが失敗した場合は「0」、成功した場合は「1」が返る。
+
+・agent.ping
+zabbix-agentの状態をチェック。
+成功であれば1、失敗であれば何も返さない。
+
+
+●ログ監視編
+・log[file,<regexp>,<encoding>,<maxlines>,<mode>,<output>]
+ログファイルの監視
+更新間隔毎に、前回読み込んだ行以降を読み込み、取得する。
+特定の文字列を含む行のみを取得する場合、<regexp>に任意の文字列を入れる。
+複数の文字列を取得する場合は|で区切る。
+
+
+●プロセス監視編
+・proc.num[<name>,<user>,<state>,<cmdline>]
+あるユーザーの下で実行中で特定のステータスにあるプロセス数。
+psコマンドで表示されるコマンドラインを<cmdline>に入れることで
+プロセスを絞り込むことが可能
+<user>にプロセスのユーザー名を入れることで絞り込みが可能。
+
+
+●リソース監視編
+・system.cpu.util[,user,avg1]
+1分間の平均CPU使用率を算出
+
+・vfs.fs.size[/,pused]
+ファイルの使用率を算出
+上記はパーティション名「/」を監視
+ディスク使用率を監視する場合はpusedを指定
+
+・vm.memory.size[available]
+使用可能(free + buffers + cached)なメモリサイズ
+
+・vm.memory.size[free]
+メモリを必要とするどんな項目に対しても使用できるメモリサイズ
+
+・vm.memory.size[buffers]
+ファイルシステムのメタデータのようなもののキャッシュサイズ
+
+・vm.memory.size[cached]
+さまざまなもののキャッシュサイズ
+
+・vm.memory.size[total]
+使用可能な物理メモリの合計
+
+・vm.memory.size[(total-available)/total]
+タイプ：計算
+式：(last("vm.memory.size[total]")-last("vm.memory.size[available]"))/last("vm.memory.size[total]")*100
+トータルのメモリサイズから空き容量を引き、残りをトータルで割り、100を掛ける。
+
+
+●Web監視編
+・web.test.fail[Scenario]
+指定のwebシナリオにて設定したURLとのコネクション異常
+アイテム名：Failed step of scenario 'Scenario'
+※アイテムの編集は不可。トリガー条件式にてキーを使用
+
+・web.test.rspcode[Scenario,Step]
+指定のwebシナリオにて設定したURLからのレスポンスコード
+アイテム名：Response code for step 'Step' of scenario 'Scenario'
+※アイテムの編集は不可。トリガー条件式にてキーを使用
+
+
+【トリガー関数】
+
+・last
+last(0) - 直近値
+last(#3) - 3番目に新しい値
+
+・max
+使用例：{Template ICMP Ping:icmpping.max(#3)}=0
+3回連続でping失敗した場合に障害判定
+
+・str
+()内の文字列を検索。大文字小文字は区別される。
+str(error) - 文字列errorを検索。
+文字列が見つかった場合1を、それ以外は0を返す。
+
+・nodata
+nodata(300) - 300秒以内にデータを一つも受信しない場合、1を返す。。
+()内の秒数は30以上でなければならない。
+()内の秒数にかかわらず、30秒毎に必ずnodataによる
+アイテムキーの評価がされるため、誤作動が起きることがある。
+ログ監視のような障害復帰条件が設定しづらい状況で使用することが多い
